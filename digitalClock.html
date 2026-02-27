@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analog World Map Clock</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --clock-size: min(75vw, 75vh);
+        }
+
+        body {
+            background-color: #0f172a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* Main layout container: Row on desktop, Column on mobile */
+        .main-layout {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            width: 100%;
+            padding: 1rem;
+        }
+
+        @media (min-width: 1024px) {
+            .main-layout {
+                flex-direction: row;
+                gap: 4rem;
+            }
+        }
+
+        .clock-container {
+            position: relative;
+            width: var(--clock-size);
+            height: calc(var(--clock-size) * (1200 / 1140));
+            max-width: 1140px;
+            max-height: 1200px;
+            background-image: url('world.png');
+            background-size: cover;
+            background-position: center;
+            border-radius: 12%; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 8px solid #2d3748;
+            flex-shrink: 0;
+        }
+
+        /* Hour labels container */
+        .hour-labels {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .hour-label {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: bold;
+            font-size: 1rem;
+            text-shadow: 0 0 4px rgba(0,0,0,0.8);
+            transform: translate(-50%, -50%);
+        }
+
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom;
+            border-radius: 10px;
+            transition: transform 0.05s cubic-bezier(0.4, 2.3, 0.3, 1);
+        }
+
+        .hour-hand {
+            width: 8px;
+            height: 25%;
+            background-color: #f8fafc;
+            z-index: 3;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .sun-icon {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 32px;
+            filter: drop-shadow(0 0 5px rgba(253, 224, 71, 0.8));
+        }
+
+        .minute-hand {
+            width: 5px;
+            height: 35%;
+            background-color: #cbd5e1;
+            z-index: 4;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .second-hand {
+            width: 2px;
+            height: 42%;
+            background-color: #ef4444;
+            z-index: 5;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+
+        .center-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            background-color: #ef4444;
+            border: 3px solid #f8fafc;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 6;
+        }
+
+        .info-panel {
+            text-align: center;
+            color: #f8fafc;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 1.5rem 2.5rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            min-width: 320px;
+        }
+
+        .date-display {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+
+        .digital-time {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.05em;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            background: #334155;
+            color: white;
+            padding: 0.6rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .btn:hover {
+            background: #475569;
+            transform: translateY(-2px);
+        }
+
+        .btn-reset {
+            background: #ef4444;
+            grid-column: span 2;
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
+        .live { background: #10b981; color: white; }
+        .offset { background: #f59e0b; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="main-layout">
+        <!-- Info Panel -->
+        <div class="info-panel">
+            <div class="date-display" id="date">Friday, Feb 27, 2026</div>
+            <div class="digital-time" id="digital-time">00:00:00</div>
+            
+            <div id="status" class="status-badge live">Live</div>
+
+            <div class="controls">
+                <button class="btn" onclick="adjustTime(-3600)">
+                    <span>⏪</span> -1h
+                </button>
+                <button class="btn" onclick="adjustTime(3600)">
+                    +1h <span>⏩</span>
+                </button>
+                <button class="btn" onclick="adjustTime(-60)">
+                    -1m
+                </button>
+                <button class="btn" onclick="adjustTime(60)">
+                    +1m
+                </button>
+                <button class="btn btn-reset" onclick="resetTime()">
+                    Reset to Real Time
+                </button>
+            </div>
+        </div>
+
+        <!-- Clock -->
+        <div class="clock-container" id="clock">
+            <div class="hour-labels" id="hour-labels"></div>
+
+            <div class="hand hour-hand" id="hour">
+                <div class="sun-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fde047" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="4" fill="#fde047"></circle>
+                        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="hand minute-hand" id="minute"></div>
+            <div class="hand second-hand" id="second"></div>
+            <div class="center-dot"></div>
+        </div>
+    </div>
+
+    <script>
+        let timeOffset = 0; // In seconds
+
+        function createLabels() {
+            const container = document.getElementById('hour-labels');
+            const radius = 45; 
+            
+            for (let i = 0; i < 24; i++) {
+                const label = document.createElement('div');
+                label.className = 'hour-label';
+                const angle = (i * 15) - 90;
+                const angleRad = angle * (Math.PI / 180);
+                const x = 50 + radius * Math.cos(angleRad);
+                const y = 50 + radius * Math.sin(angleRad);
+                label.style.left = `${x}%`;
+                label.style.top = `${y}%`;
+                label.textContent = i === 0 ? '24' : i;
+                container.appendChild(label);
+            }
+        }
+
+        function adjustTime(seconds) {
+            timeOffset += seconds;
+            updateClock();
+        }
+
+        function resetTime() {
+            timeOffset = 0;
+            updateClock();
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const displayedTime = new Date(now.getTime() + (timeOffset * 1000));
+            
+            const seconds = displayedTime.getSeconds();
+            const minutes = displayedTime.getMinutes();
+            const hours = displayedTime.getHours();
+
+            const secondDeg = (seconds / 60) * 360;
+            const minuteDeg = ((minutes + seconds / 60) / 60) * 360;
+            const hourDeg = ((hours + minutes / 60) / 24) * 360;
+
+            document.getElementById('second').style.transform = `translateX(-50%) rotate(${secondDeg}deg)`;
+            document.getElementById('minute').style.transform = `translateX(-50%) rotate(${minuteDeg}deg)`;
+            document.getElementById('hour').style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
+
+            const h = String(hours).padStart(2, '0');
+            const m = String(minutes).padStart(2, '0');
+            const s = String(seconds).padStart(2, '0');
+            document.getElementById('digital-time').textContent = `${h}:${m}:${s}`;
+
+            const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('date').textContent = displayedTime.toLocaleDateString('en-US', options);
+
+            const statusEl = document.getElementById('status');
+            if (timeOffset === 0) {
+                statusEl.textContent = "Live";
+                statusEl.className = "status-badge live";
+            } else {
+                const hOffset = Math.round(timeOffset / 3600 * 10) / 10;
+                statusEl.textContent = `Offset: ${hOffset > 0 ? '+' : ''}${hOffset}h`;
+                statusEl.className = "status-badge offset";
+            }
+        }
+
+        createLabels();
+        setInterval(updateClock, 1000);
+        window.onload = updateClock;
+    </script>
+</body>
+</html>
